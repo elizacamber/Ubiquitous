@@ -2,4 +2,5 @@
 <resources>
     <color name="primary">#03A9F4</color>
     <color name="digital_text">#ffffff</color>
+    <color name="digital_text_opacity">#aaffffff</color>
 </resources>
