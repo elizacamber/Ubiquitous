@@ -38,12 +38,19 @@ import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.Asset;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -56,6 +63,7 @@ import java.util.concurrent.ExecutionException;
 
 public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
         implements GoogleApiClient.ConnectionCallbacks {
+    private static final String TAG = SunshineSyncAdapter.class.getSimpleName();
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
     public static final String ACTION_DATA_UPDATED = "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
     // Interval at which to sync with the weather, in seconds.
@@ -79,15 +87,8 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
     private static final int INDEX_MIN_TEMP = 2;
     private static final int INDEX_SHORT_DESC = 3;
 
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
+    private GoogleApiClient mGoogleApiClient;
 
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({LOCATION_STATUS_OK, LOCATION_STATUS_SERVER_DOWN, LOCATION_STATUS_SERVER_INVALID,  LOCATION_STATUS_UNKNOWN, LOCATION_STATUS_INVALID})
@@ -99,8 +100,17 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
     public static final int LOCATION_STATUS_UNKNOWN = 3;
     public static final int LOCATION_STATUS_INVALID = 4;
 
+    private static final String WEARABLE_DATA_PATH = "/wearable_data";
+    private static final String KEY_LOW_TEMP = "key_low_temp";
+    private static final String KEY_HIGH_TEMP = "key_high_temp";
+    private static final String KEY_ASSET = "key_asset";
+
     public SunshineSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
+        mGoogleApiClient = new GoogleApiClient.Builder(context)
+                .addApi(Wearable.API)
+                .build();
+        mGoogleApiClient.connect();
     }
 
     @Override
@@ -350,6 +360,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
                 high = temperatureObject.getDouble(OWM_MAX);
                 low = temperatureObject.getDouble(OWM_MIN);
 
+                if (i == 0) {
+                    notifyWear(high, low, weatherId);
+                }
                 ContentValues weatherValues = new ContentValues();
 
                 weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LOC_KEY, locationId);
@@ -517,6 +530,48 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
         }
     }
 
+
+    private void notifyWear(double high, double low, int weatherId) {
+        PutDataMapRequest dataMap = PutDataMapRequest.create(WEARABLE_DATA_PATH);
+
+        // find and convert weather icon to asset
+        int id = Utility.getArtResourceForWeatherCondition(weatherId);
+        Bitmap bitmap = BitmapFactory.decodeResource(getContext().getResources(), id);
+        Asset asset = toAsset(bitmap);
+
+        dataMap.getDataMap().putDouble(KEY_HIGH_TEMP, high);
+        dataMap.getDataMap().putDouble(KEY_LOW_TEMP, low);
+        dataMap.getDataMap().putAsset(KEY_ASSET, asset);
+        PutDataRequest request = dataMap.asPutDataRequest();
+        request.setUrgent();
+
+        Wearable.DataApi.putDataItem(mGoogleApiClient, request)
+                .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                    @Override
+                    public void onResult(DataApi.DataItemResult dataItemResult) {
+                        Log.v(TAG, "Sending data to wear was successful: " + dataItemResult.getStatus()
+                                .isSuccess());
+                    }
+                });
+    }
+
+    private static Asset toAsset(Bitmap bitmap) {
+        ByteArrayOutputStream byteStream = null;
+        try {
+            byteStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
+            return Asset.createFromBytes(byteStream.toByteArray());
+        } finally {
+            if (null != byteStream) {
+                try {
+                    byteStream.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+        }
+    }
+
     /**
      * Helper method to handle insertion of a new location in the weather database.
      *
@@ -669,5 +724,16 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
         SharedPreferences.Editor spe = sp.edit();
         spe.putInt(c.getString(R.string.pref_location_status_key), locationStatus);
         spe.commit();
+    }
+
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
     }
 }

@@ -40,7 +40,7 @@
         <!-- This Space is only there to line the image up with the
              keyline correctly, since we cannot do addition of
              dimensions/attributes otherwise -->
-        <android.support.v4.widget.Space
+        <android.support.v7.widget.Space
             android:id="@+id/sunshineLogoAlign"
             android:layout_width="@dimen/list_icon"
             android:layout_height="0dp"
@@ -62,7 +62,7 @@
     </RelativeLayout>
 
     <!-- This is used as a strut to create two columns in our RelativeLayout -->
-    <android.support.v4.widget.Space
+    <android.support.v7.widget.Space
         android:id="@+id/layout_center"
         android:layout_width="0dp"
         android:layout_height="0dp"

@@ -13,7 +13,7 @@
     <dimen name="digital_date_size">15dp</dimen>
     <dimen name="digital_date_size_round">20dp</dimen>
 
-    <dimen name="width_divider_line">80dp</dimen>
+    <dimen name="width_divider_line">50dp</dimen>
 
     <dimen name="digital_line_height_time">25dp</dimen>
     <dimen name="digital_line_height_date">20dp</dimen>
