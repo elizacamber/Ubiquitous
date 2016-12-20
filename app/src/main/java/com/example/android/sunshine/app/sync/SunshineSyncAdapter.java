@@ -542,6 +542,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
         dataMap.getDataMap().putDouble(KEY_HIGH_TEMP, high);
         dataMap.getDataMap().putDouble(KEY_LOW_TEMP, low);
         dataMap.getDataMap().putAsset(KEY_ASSET, asset);
+        //TODO: Delete this! For debug ONLY!!!
+        dataMap.getDataMap().putLong("Time", System.currentTimeMillis());
+
         PutDataRequest request = dataMap.asPutDataRequest();
         request.setUrgent();
 
